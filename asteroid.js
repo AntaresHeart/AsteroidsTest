@@ -1,36 +1,51 @@
 // JavaScript source code
 
-//get our canvas element and target it's context
+//get our canvas then target it's context
 const c = document.getElementById("game-board");
 const ctx = c.getContext("2d");
 
 
-//set the scale for our sizing purposes
+//initialize proportion scaling variable
 let scaling;
 
-//Get the size of window we're using to scale our game to the largest fit for the screen
+//initialize game variables  !!! these need created counter elements for targeting in html !!!
+let lives = 5;
+let roundScore = 0;
+let totalScore = 0;
+let round = 1; 
+
+//Lets the game know the number of each type of asteroid to spawn per round
+enemyArray = [
+    { vF: 0.75, small: 10, medium: 4, large: 2 },
+    { vF: 0.8, small: 15, medium: 8, large: 2 },
+    { vF: 0.9, small: 20, medium: 12, large: 3 },
+    { vF: 1, small: 25, medium: 16, large: 4 },
+    { vF: 1.25, small: 30, medium: 20, large: 6 },
+    { vF: 1.66, small: 35, medium: 24, large: 9 },
+    { vF: 2.25, small: 40, medium: 28, large: 14 }
+]
+
+
+
+//Change the size of window we're using and set the scaling cosntant for the sprites
 const size = () => {
     if (innerWidth > 800 && innerHeight > 800) {
         scaling = 3;
-        console.log("768", scaling)
-
         c.width = 768;
         c.height = 768;
     } else if (innerWidth > 670 && innerHeight > 670) {
         scaling = 2;
-        console.log("512", scaling)
         c.width = 512;
         c.height = 512;
     } else {
         scaling = 1;
-        console.log("256", scaling)
         c.width = 256;
         c.height = 256;
     }
 }
 
 
-//Pre pull all sprites for faster loading when window is resizing
+//Pull sprites
 const fuel_1 = new Image();
 fuel_1.src = "./Sprites/Player/ship_power_16.png";
 const fuel_2 = new Image();
@@ -57,16 +72,16 @@ ship_3.src = "./Sprites/Player/ship_48.png";
 
 
 
-//when someone wants to resize the window, make the game bigger or smaller to fit in the screen
+//Resizing the window will make the game bigger or smaller to fit in the screen
 window.addEventListener("resize", function () {
     size();
-    animate();
+    //animate(); //I don't think we need this here
 });
 
    
 
 
-
+//Define the player class
 class Player {
     constructor() {
         this.position = {
@@ -76,6 +91,11 @@ class Player {
         this.velocity = {
             x : 0,
             y : 0
+        }
+        //dunno if this belongs here
+        this.accuracy = {
+            fired: 0,
+            hit: 0
         }
         this.stationary = true;
         this.going = false;
@@ -135,6 +155,7 @@ const startGame = () => {
 //        };
 //    }
 //}
+
 
 const animate = () => {
     requestAnimationFrame(animate);
