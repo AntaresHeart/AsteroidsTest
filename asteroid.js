@@ -1,5 +1,24 @@
 // JavaScript source code
 
+/* PI ROTATION RATIOS FOR LATER !!!javascript rotation happens in clockwise direction!!!
+0 degrees = 12 * PI / 6
+30 degrees = 1 * PI / 6
+60 degrees = 2 * PI / 6
+90 degrees = 3 * PI / 6  // this turned the ship to face the right border
+120 degrees = 4 * PI / 6
+150 degrees = 5 * PI / 6
+180 degrees = 6 * PI / 6
+210 degrees = 7 * PI / 6
+240 degrees = 8 * PI / 6
+270 degrees = 9 * PI / 6
+300 degrees = 10 * PI / 6
+330 degrees = 11 * PI / 6
+360 degrees = 12 * PI / 6
+
+//thinking of using the constant to feed in the rotation of the ship
+let rotationConst = 0; default is spawn facing top of page
+*/
+
 //get our canvas then target it's context
 const c = document.getElementById("game-board");
 const ctx = c.getContext("2d");
@@ -7,6 +26,7 @@ const ctx = c.getContext("2d");
 
 //initialize proportion scaling variable
 let scaling;
+
 
 //initialize game variables  !!! these need created counter elements for targeting in html !!!
 let lives = 5;
@@ -128,7 +148,12 @@ class Player {
             } else if (scaling === 2) {
                 ctx.drawImage(ship_2, this.position.x, this.position.y);
             } else {
-                ctx.drawImage(ship_3, this.position.x, this.position.y);
+                    ctx.save()
+                    ctx.translate(this.position.x, this.position.y);
+                    ctx.rotate(Math.PI / 2);  //change this to evaluate dynamically later
+                    ctx.drawImage(ship_3, -ship_3.width / 2, -ship_3.height / 2);                   
+                    ctx.restore();
+                
             }
         }  
     }
