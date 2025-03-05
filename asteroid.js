@@ -24,23 +24,24 @@ const ctx = c.getContext("2d");
 const startBtn = document.getElementById("start-btn");
 const shipInstructions = document.getElementById("instructions-btn");
 const startGameScreen = document.getElementById("start-game-screen");
+const topScoreElement = document.getElementById("top-score");
+const totalScoreElement = document.getElementById("total-score");
+const healthElement = document.getElementById("health-left");
 
 
 
 //define our default heading and a half-ship length for positioning
 let angleConstant = 12;
 const bulletWidth = 4;
-let level = 0;
-let lives = 5;
+
+
+
 
 
 //create arrays for drawing and tracking state of bullets and enemies
 let bulletArray = [];
 let asteroidArray = [];
 let keysPressed = {};
-
-//set the drift value for the ship
-const drift = 0.993;
 
 
 
@@ -76,6 +77,14 @@ const largeAsteroid = new Image();
 largeAsteroid.src = "./Sprites/Player/asteroid_64.png";
 
 
+// -Health icon- //
+const heart = new Image();
+heart.src = "./Sprites/Player/life_light_12.png";
+
+const bgImg = new Image();
+bgImg.src = "./Sprites/Player/earth.png";
+
+
 //create enemy objects - need to be added in multiple methods
 const smallEnemy = { health: 1, size: 16, x: 0, y: 0, speed: 1.42, heading: 0, sprite: smallAsteroid };
 const mediumEnemy = { health: 2, size: 32, x: 0, y: 0, speed: 0.95, heading: 0, sprite: mediumAsteroid };
@@ -97,6 +106,13 @@ class Player{
         this.drifting = false;
         this.halfShip = 12;
         this.shipSpeed = 1.3;
+        this.state = {
+            lives: 5,
+            level: 0,
+            score: 0,
+            topScore: 0,
+            pause: false,
+        }
     }
            
     draw() {
@@ -136,11 +152,15 @@ class Player{
         } else {
             ctx.drawImage(shipPower, 0, 0);
         }
-
+        //return canvas to prevoius state
         ctx.restore();
 
     }
 
+
+    //this is my tricky workaround for other keys locking eachother out//
+    //this made it so the ship will always fly forward, if you are holding the uparrow key. //
+    //it will not stop its' behaviour when another key is lifted, like the rest of the controlls//
     movePlayer() {
         if (keysPressed["ArrowUp"] === true) {
             this.velocity.y = this.position.y - (this.position.y + this.shipSpeed * Math.cos(angleConstant * (Math.PI / 6)));
@@ -159,7 +179,7 @@ class Player{
 
     //modify bullet object and push new bullet to the array
     fire() {
-        const bullet = {
+        let bullet = {
             x: 0,
             y: 0,
             dx: 0,
@@ -185,24 +205,34 @@ const hero = new Player();
 
 const startGame = () => {    
     startGameScreen.style.display = "none";
-    c.style.display = "block";
+    hero.state.level = 0;
+    hero.state.lives = 5;
     requestAnimationFrame(animate);
 }
 
-const createEnemyList = (level) => {
+const drawHud = () => {
+    const hearthWidth = 14;    
+    for (let i = 1; i <= hero.state.lives; i++) {
+        ctx.drawImage(heart, hearthWidth * (i + 5), 20)
+    }
 
-    for (let i = 0; i < 10 + level; i++) {   
+    totalScoreElement.textContent = `TOTAL SCORE: ${hero.state.score}`
+}
+
+const createEnemyList = () => {
+
+    for (let i = 0; i < 10 + hero.state.level; i++) {   
         asteroidArray.push({ ...smallEnemy });
     }
 
-    if (level > 1) {
-        for (let i = 0; i < (level - 1) * 2; i++) {
+    if (hero.state.level > 1) {
+        for (let i = 0; i < (hero.state.level - 1) * 2; i++) {
             asteroidArray.push({ ...mediumEnemy });
         }
     }
 
-    if (level > 2) {
-        for (let i = 0; i < (level - 1) * 3; i++) {
+    if (hero.state.level > 2) {
+        for (let i = 0; i < (hero.state.level - 1) * 3; i++) {
             asteroidArray.push({ ...largeEnemy });
         }
     }
@@ -242,22 +272,29 @@ const replaceEnemy = (size, x, y) => {
 const animate = () => {
     //Where else should I call this?
     const request = setInterval(requestAnimationFrame(animate), 100 / 6);
-    //clear the canvas every frame
+    //clear the canvas every frame and draw the background & hud
     ctx.clearRect(0, 0, c.width, c.height);
+    ctx.drawImage(bgImg, 0, 0)
+    drawHud();
 
 
+    //if our enemy list is empty, our level is over - move onto next level
     if (!asteroidArray.length) {
-        level++;
-        createEnemyList(level);
+        hero.state.level++;
+        createEnemyList();
     }
-    //update the ship every frame
+
+    //update the ship
     hero.update();
 
     //gravity affects the ship every frame
+    //set the drift value for the ship
+    const drift = 0.993;
     hero.velocity.y = hero.velocity.y * drift;
     hero.velocity.x = hero.velocity.x * drift;
 
-    //set the state of the ship based on velocity
+
+    //set the state of the ship based on velocity at time of animation
     if (Math.abs(hero.velocity.y) + Math.abs(hero.velocity.x) > 0.75) {
         hero.stationary = false;
         hero.drifting = false;
@@ -267,6 +304,8 @@ const animate = () => {
     } else {
         hero.stationary = true;
         hero.drifting = false;
+
+
     }
 
 
@@ -328,6 +367,7 @@ const animate = () => {
         });
 
         if (asteroid.health < 1) {
+            hero.state.score += asteroid.size + hero.state.lives;
             replaceEnemy(asteroid.size, asteroid.x, asteroid.y);
             asteroidArray.splice(asteroidArray.indexOf(asteroid), 1);
         } else {
