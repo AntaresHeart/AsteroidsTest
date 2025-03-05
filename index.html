@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +9,22 @@
     <link href="asteroid.css" rel="stylesheet" />
     <title>Asteroids</title>
 </head>
+
 <body>
-    <canvas id="game-board"></canvas>
+
+    <div class="start-game-screen" id="start-game-screen">
+        <h1 class="inset" id="title">2076ad - Earth</h1>
+        <h2 class="inset warning" id="warning">Asteroids threaten the planet's structure</h2>
+        <p class="inset helpful" id="welcome">Welcome, soldier. You have been recruited to pilot our XJ72 Space-Fighter.</p>
+        <button id="start-btn" class="btn warning">DEFEND EARTH</button>
+        <button id="instructions-btn" class="btn helpful">SHIP MANUAL - HOW TO PILOT AN XJ '72</button>
+    </div>
+
+    <canvas id="game-board" class="game-board"></canvas>
+
+
+
+
     <script src="asteroid.js"></script>
 </body>
 </html>

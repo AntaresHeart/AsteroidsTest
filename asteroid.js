@@ -1,26 +1,48 @@
 // JavaScript source code
 
-let angleConstant = 12;
-let halfShip = 24;
-let bulletsToDraw = 0;
-let bullet = {
-    x: 0,
-    y: 0,
-    dx: 0,
-    dy: 0,
-    start: [0, 0],
-    bulAng: 0,
-    distanceTravelled: 0,
-    bulletAlive: true
-};
-
-let bulletArray = [];
-
-let drift = 0.993;
-
+/* PI ROTATION RATIOS FOR LATER  !!!I thought radians needed to be used for rotation but it seems that degrees are fine. Going to stick with this for now!!!
+0 degrees = 12 * PI / 6
+30 degrees = 1 * PI / 6
+60 degrees = 2 * PI / 6
+90 degrees = 3 * PI / 6 
+120 degrees = 4 * PI / 6
+150 degrees = 5 * PI / 6
+180 degrees = 6 * PI / 6
+210 degrees = 7 * PI / 6
+240 degrees = 8 * PI / 6
+270 degrees = 9 * PI / 6
+300 degrees = 10 * PI / 6
+330 degrees = 11 * PI / 6
+360 degrees = 12 * PI / 6
+ 
+*/
 //get our canvas then target it's context
 const c = document.getElementById("game-board");
 const ctx = c.getContext("2d");
+
+//get our buttons and level / start screens
+const startBtn = document.getElementById("start-btn");
+const shipInstructions = document.getElementById("instructions-btn");
+const startGameScreen = document.getElementById("start-game-screen");
+
+
+
+//define our default heading and a half-ship length for positioning
+let angleConstant = 12;
+const bulletWidth = 4;
+let level = 0;
+let lives = 5;
+
+
+//create arrays for drawing and tracking state of bullets and enemies
+let bulletArray = [];
+let asteroidArray = [];
+let keysPressed = {};
+
+//set the drift value for the ship
+const drift = 0.993;
+
+
 
 
 // static canvas size for testing
@@ -28,22 +50,40 @@ c.width = 768;
 c.height = 768;
 
 
-//Pull sprites
+//Pull all sprites
+// -ship state sprites - //
 const shipPower = new Image();
-shipPower.src = "./Sprites/Player/ship_power_48.png";
+shipPower.src = "./Sprites/Player/ship_power_24.png";
 
 const shipExhausting = new Image();
-shipExhausting.src = "./Sprites/Player/ship_release_48.png";
+shipExhausting.src = "./Sprites/Player/ship_release_24.png";
 
 const shipSteady = new Image();
-shipSteady.src = "./Sprites/Player/ship_48.png";  
+shipSteady.src = "./Sprites/Player/ship_24.png";  
 
+// -bullet sprite - //
 const bulletSprite = new Image();
 bulletSprite.src = "./Sprites/Player/bullet.png";  
 
+// -enemy sprites - //
+const smallAsteroid = new Image();
+smallAsteroid.src = "./Sprites/Player/asteroid_16.png";
+
+const mediumAsteroid = new Image();
+mediumAsteroid.src = "./Sprites/Player/asteroid_32.png";
+
+const largeAsteroid = new Image();
+largeAsteroid.src = "./Sprites/Player/asteroid_64.png";
 
 
-class Player {
+//create enemy objects - need to be added in multiple methods
+const smallEnemy = { health: 1, size: 16, x: 0, y: 0, speed: 1.42, heading: 0, sprite: smallAsteroid };
+const mediumEnemy = { health: 2, size: 32, x: 0, y: 0, speed: 0.95, heading: 0, sprite: mediumAsteroid };
+const largeEnemy = { health: 3, size: 64, x: 0, y: 0, speed: 0.65, heading: 0, sprite: largeAsteroid };
+
+
+//create player object
+class Player{
     constructor() {
         this.position = {
             x : c.width / 2,
@@ -55,36 +95,38 @@ class Player {
         }
         this.stationary = true;
         this.drifting = false;
+        this.halfShip = 12;
+        this.shipSpeed = 1.3;
     }
            
     draw() {
 
         //check ship against canvas boundaries before drawing and reposition to opposite side if needed
-        if (this.position.x - halfShip > c.width) {
-            this.position.x = 0 - halfShip;
+        if (this.position.x - this.halfShip > c.width) {
+            this.position.x = 0 - this.halfShip;
         }
 
-        if (this.position.x + halfShip < 0) {
-            this.position.x = c.width + halfShip;
+        if (this.position.x + this.halfShip < 0) {
+            this.position.x = c.width + this.halfShip;
         }
 
-        if (this.position.y - halfShip > c.height) {
-            this.position.y = 0 - halfShip;
+        if (this.position.y - this.halfShip > c.height) {
+            this.position.y = 0 - this.halfShip;
         }
 
-        if (this.position.y + halfShip < 0) {
-                this.position.y = c.height + halfShip;
+        if (this.position.y + this.halfShip < 0) {
+                this.position.y = c.height + this.halfShip;
         }
 
         // rotate and draw the ship based on angleConstant
         ctx.save()
         ctx.shadowColor = "black";
-        ctx.shadowOffsetX = 15;
-        ctx.shadowOffsetY = 25;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 15;
         ctx.shadowBlur = 13;
         ctx.translate(this.position.x, this.position.y);
         ctx.rotate(angleConstant * Math.PI / 6);
-        ctx.translate(-halfShip, -halfShip);
+        ctx.translate(-this.halfShip, -this.halfShip);
 
         //choose ship based on speed state
         if (this.stationary) {
@@ -96,19 +138,39 @@ class Player {
         }
 
         ctx.restore();
+
     }
+
+    movePlayer() {
+        if (keysPressed["ArrowUp"] === true) {
+            this.velocity.y = this.position.y - (this.position.y + this.shipSpeed * Math.cos(angleConstant * (Math.PI / 6)));
+            this.velocity.x = this.position.x - (this.position.x + this.shipSpeed * Math.sin(angleConstant * (Math.PI / 6)));
+        }
+    }
+
 
     //calll draw and update position based on velocity per frame
     update() {
         this.draw();
+        this.movePlayer();
         this.position.x -= this.velocity.x;
         this.position.y += this.velocity.y;
     }
 
     //modify bullet object and push new bullet to the array
     fire() {
-        bullet.x = this.position.x + halfShip * Math.sin(angleConstant * (Math.PI / 6)) ;
-        bullet.y = this.position.y - halfShip * Math.cos(angleConstant * (Math.PI / 6));
+        const bullet = {
+            x: 0,
+            y: 0,
+            dx: 0,
+            dy: 0,
+            start: [0, 0],
+            bulAng: 0,
+            distanceTravelled: 0
+        };
+
+        bullet.x = this.position.x + this.halfShip * Math.sin(angleConstant * (Math.PI / 6)) ;
+        bullet.y = this.position.y - this.halfShip * Math.cos(angleConstant * (Math.PI / 6));
         bullet.dx = 3 * Math.sin(angleConstant * (Math.PI / 6));
         bullet.dy = -3 * Math.cos(angleConstant * (Math.PI / 6));
         bullet.start = [this.position.x, this.position.y];
@@ -121,14 +183,73 @@ class Player {
 
 const hero = new Player();
 
+const startGame = () => {    
+    startGameScreen.style.display = "none";
+    c.style.display = "block";
+    requestAnimationFrame(animate);
+}
+
+const createEnemyList = (level) => {
+
+    for (let i = 0; i < 10 + level; i++) {   
+        asteroidArray.push({ ...smallEnemy });
+    }
+
+    if (level > 1) {
+        for (let i = 0; i < (level - 1) * 2; i++) {
+            asteroidArray.push({ ...mediumEnemy });
+        }
+    }
+
+    if (level > 2) {
+        for (let i = 0; i < (level - 1) * 3; i++) {
+            asteroidArray.push({ ...largeEnemy });
+        }
+    }
+
+    asteroidArray.forEach(asteroid => {
+        asteroid.x = Math.floor(Math.random() * c.width - c.width / 20);
+        asteroid.y = Math.floor(Math.random() * c.height - c.height / 20);
+        asteroid.heading = Math.floor(Math.random() * 12);
+    });
+
+}
+
+
+//Replace larger enemies with one size smaller !!! NEED TO ADD EXPLOSION ANIMATION BEFORE SPAWN !!!
+const replaceEnemy = (size, x, y) => {
+
+    if (size === 32) {
+        for (let i = 0; i < 2; i++) {
+            const smallReplace = { ...smallEnemy };
+            smallReplace.x = x;
+            smallReplace.y = y;
+            smallReplace.heading = Math.floor(Math.random() * 12);
+            asteroidArray.push({ ...smallReplace });
+        }
+    } else if (size === 64) {
+        for (let i = 0; i < 2; i++) {
+            const mediumReplace = { ...mediumEnemy };
+            mediumReplace.x = x;
+            mediumReplace.y = y;
+            mediumReplace.heading = Math.floor(Math.random() * 12);
+            asteroidArray.push({ ...mediumReplace });
+        }
+    }
+}
 
 
 const animate = () => {
     //Where else should I call this?
-    requestAnimationFrame(animate);
+    const request = setInterval(requestAnimationFrame(animate), 100 / 6);
     //clear the canvas every frame
     ctx.clearRect(0, 0, c.width, c.height);
 
+
+    if (!asteroidArray.length) {
+        level++;
+        createEnemyList(level);
+    }
     //update the ship every frame
     hero.update();
 
@@ -148,29 +269,28 @@ const animate = () => {
         hero.drifting = false;
     }
 
-    //if bullet is "dead" remove it from the array
-    bulletArray.filter(bul => bul.bulletAlive === false);
 
-    //draw bullets or mark them as "dead"
+
+    //draw bullets or mark them as "dead" !!! SOME BULLETS NOT REACHING EDGE, NOW THAT THE EDGE CASE IS CLEARER SHOULD CLEAN UP THE EDGE DEFINITION
     bulletArray.forEach(bul => {
         if (500 * 500 > Math.pow(bul.x - bul.start[0], 2) + Math.pow(bul.y - bul.start[1], 2)) {
-            if (bul.x + 8 > c.width) {
+            if (bul.x + 2 * bulletWidth > c.width && Math.sin(bul.bulAng * (Math.PI / 6)) > 0) {
                 bul.start[0] = -(bul.x - bul.start[0]);
                 bul.x = 0;
 
             }
 
-            if (bul.x + 8 < 0) {
+            if (bul.x - 8 < 0 && Math.sin(bul.bulAng * (Math.PI / 6)) < 0) {
                 bul.start[0] = c.width - (bul.x - bul.start[0]);
                 bul.x = c.width - 8;
             }
 
-            if (bul.y - 8 > c.height) {
+            if (bul.y - 8 > c.height && Math.cos(bul.bulAng * (Math.PI / 6)) > 0) {
                 bul.start[1] = - (bul.y - bul.start[1]);
                 bul.y = 0;
             }
 
-            if (bul.y + 8 < 0) {
+            if (bul.y + 8 < 0 && Math.cos(bul.bulAng * (Math.PI / 6)) > 0) {
                 bul.start[1] = c.height - (bul.y - bul.start[1]);
                 bul.y = c.height;
             }
@@ -188,25 +308,64 @@ const animate = () => {
             ctx.drawImage(bulletSprite, -4, -4);
             ctx.restore();
         } else {
-            bul.bulletAlive = false;
+            bulletArray.splice(bulletArray.indexOf(bul), 1);
         }
     });
-}
 
-    //size the game based on the size available on loading.
-    window.onload = (event) => {
-        animate();
-    };
+    //draw enemies
+    asteroidArray.forEach(asteroid => {
 
+        //collision detection with bullets
+        bulletArray.forEach(bul => {
+            if (bul.x + bulletWidth > asteroid.x - asteroid.size / 2
+                && bul.x < asteroid.x + asteroid.size / 2
+                && bul.y + bulletWidth > asteroid.y - asteroid.size / 2
+                && bul.y < asteroid.y + asteroid.size / 2) {
 
-    //Thinking about implementing combo keys to see if I can prevent one key from cutting out the others
-    const movePlayer = (keys) => {
+                bulletArray.splice(bulletArray.indexOf(bul), 1);
+                asteroid.health--;
+            }
+        });
 
-        if (keys["ArrowUp"] === true) {
-            hero.velocity.y = hero.position.y - (hero.position.y + 1.75 * Math.cos(angleConstant * (Math.PI / 6)));
-            hero.velocity.x = hero.position.x - (hero.position.x + 1.75 * Math.sin(angleConstant * (Math.PI / 6)));
+        if (asteroid.health < 1) {
+            replaceEnemy(asteroid.size, asteroid.x, asteroid.y);
+            asteroidArray.splice(asteroidArray.indexOf(asteroid), 1);
+        } else {
+
+            if (asteroid.x >= c.width && Math.sin(asteroid.heading * (Math.PI / 6)) > 0) {
+                asteroid.x = 0 - asteroid.size;
+            }
+
+            if (asteroid.x + asteroid.size < 0 && Math.sin(asteroid.heading * (Math.PI / 6)) < 0) {
+                asteroid.x = c.width + asteroid.size;
+            }
+
+            if (asteroid.y >= c.height && Math.cos(asteroid.heading * (Math.PI / 6)) < 0) {
+                asteroid.y = 0 - asteroid.size;
+            }
+
+            if (asteroid.y + asteroid.size < 0 && Math.cos(asteroid.heading * (Math.PI / 6)) > 0) {
+                asteroid.y = c.height + asteroid.size;
+            }
         }
 
+
+        ctx.save();
+        ctx.shadowColor = "black";
+        ctx.shadowOffsetX = 15;
+        ctx.shadowOffsetY = 20;
+        ctx.shadowBlur = 14;
+        ctx.drawImage(asteroid.sprite, asteroid.x, asteroid.y);
+        ctx.restore();
+
+        asteroid.x += asteroid.speed * Math.sin(asteroid.heading * (Math.PI / 6));
+        asteroid.y -= asteroid.speed * Math.cos(asteroid.heading * (Math.PI / 6));
+    });
+
+}
+
+ // Control the player's turning and shooting
+    const movePlayer = (keys) => {
 
         if (keys["ArrowRight"] === true) {
             if (angleConstant === 12) {
@@ -232,34 +391,19 @@ const animate = () => {
 
 
 
-    /* PI ROTATION RATIOS FOR LATER !!!javascript rotation happens in clockwise direction!!!
-    0 degrees = 12 * PI / 6
-    30 degrees = 1 * PI / 6
-    60 degrees = 2 * PI / 6
-    90 degrees = 3 * PI / 6 
-    120 degrees = 4 * PI / 6
-    150 degrees = 5 * PI / 6
-    180 degrees = 6 * PI / 6
-    210 degrees = 7 * PI / 6
-    240 degrees = 8 * PI / 6
-    270 degrees = 9 * PI / 6
-    300 degrees = 10 * PI / 6
-    330 degrees = 11 * PI / 6
-    360 degrees = 12 * PI / 6
-    
-    */
 
-    let keysPressed = {};
-    window.addEventListener("keydown", ({ key }) => {
-
-        keysPressed[key] = true;
-        movePlayer(keysPressed);
-    });
+window.addEventListener("keydown", ({ key }) => {
+    keysPressed[key] = true;
+    movePlayer(keysPressed)
+});
 
 
-    window.addEventListener("keyup", ({ key }) => {
-        keysPressed[key] = false;
-        movePlayer(keysPressed);
-    });
+
+window.addEventListener("keyup", ({ key }) => {
+    keysPressed[key] = false;    
+});
 
 
+startBtn.addEventListener("click", () => {
+    startGame();
+})
